@@ -81,7 +81,10 @@ export interface ModelCostRange {
 
 /** 场景输入字段名。全部以字符串保存，以允许输入框被清空。 */
 export type ScenarioField =
-  "totalTokens" | "inputRatio" | "cacheHitRateMin" | "cacheHitRateMax"
+  | "totalTokens"
+  | "inputRatio"
+  | "cacheHitRateMin"
+  | "cacheHitRateMax"
 
 /** 场景输入状态。 */
 export type ScenarioState = Record<ScenarioField, string>

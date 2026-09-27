@@ -65,7 +65,8 @@ export function CostBarChart({ results }: CostBarChartProps) {
             <ChartTooltipContent
               labelFormatter={(_label, payload) => {
                 const datum = payload?.[0]?.payload as
-                  (typeof data)[number] | undefined
+                  | (typeof data)[number]
+                  | undefined
                 if (!datum) return null
                 return (
                   <span className="flex items-center gap-1.5">
