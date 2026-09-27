@@ -19,55 +19,57 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import type { UseOpenRouterModelsResult } from "@/hooks/use-openrouter-models"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import type { UseModelImportsResult } from "@/hooks/use-model-imports"
 import { exchangeRateStatusText } from "@/lib/exchange-rate"
 import { formatUsdPerMillion } from "@/lib/format"
-import { resolveCachedPrice } from "@/lib/openrouter"
+import { resolveCachedPrice } from "@/lib/model-source"
 import { toNumber } from "@/lib/pricing"
 import type { Model } from "@/lib/types"
 
-export interface OpenRouterImportDialogProps {
+export interface ModelImportDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  /** 来自 useOpenRouterModels 的列表 / 搜索 / 勾选状态。 */
-  source: UseOpenRouterModelsResult
+  /** 来自 useModelImports 的多提供商状态（选项卡、搜索、跨平台勾选）。 */
+  source: UseModelImportsResult
   /** 返回实际新增的模型数量。 */
   onImport: (models: Model[]) => number
 }
 
 function statusText(
-  status: UseOpenRouterModelsResult["status"],
-  total: number
+  status: UseModelImportsResult["active"]["status"],
+  total: number,
+  label: string
 ) {
-  if (status === "loading") return "正在加载 OpenRouter 模型..."
-  if (status === "error") return "加载失败，请检查网络后重试。"
+  if (status === "loading") return `正在加载 ${label} 模型...`
+  if (status === "error") return `${label} 加载失败，请检查网络后重试。`
   if (status === "ready") return `已加载 ${total} 个可导入模型。`
   return "尚未加载模型。"
 }
 
-export function OpenRouterImportDialog({
+export function ModelImportDialog({
   open,
   onOpenChange,
   source,
   onImport,
-}: OpenRouterImportDialogProps) {
+}: ModelImportDialogProps) {
   const {
-    status,
-    filtered,
-    totalCount,
-    query,
+    providers,
+    activeId,
+    setActive,
+    active,
     setQuery,
+    toggleSelected,
+    selectedCount,
     usdCnyRate,
     setUsdCnyRate,
     rateStatus,
     rateInfo,
     refreshRate,
-    selectedIds,
-    toggleSelected,
     buildSelectedModels,
   } = source
 
-  const selectedCount = selectedIds.size
+  const { provider, status, filtered, totalCount, query, selectedIds } = active
   const rateValid = toNumber(usdCnyRate) > 0
   const canImport = selectedCount > 0 && rateValid
   const showEmpty = status === "ready" && filtered.length === 0
@@ -82,11 +84,21 @@ export function OpenRouterImportDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl sm:max-w-4xl">
         <DialogHeader>
-          <DialogTitle>从 OpenRouter 导入</DialogTitle>
+          <DialogTitle>导入模型</DialogTitle>
           <DialogDescription>
             公开 Models API · 价格将按汇率换算为「元 / 1M Token」
           </DialogDescription>
         </DialogHeader>
+
+        <Tabs value={activeId} onValueChange={(value) => setActive(String(value))}>
+          <TabsList>
+            {providers.map((item) => (
+              <TabsTrigger key={item.id} value={item.id}>
+                {item.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
 
         <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_180px]">
           <label className="flex flex-col gap-1.5">
@@ -152,19 +164,21 @@ export function OpenRouterImportDialog({
 
         <div className="flex items-center justify-between gap-4 text-sm">
           <span className="text-muted-foreground">
-            {statusText(status, totalCount)}
+            {statusText(status, totalCount, provider.label)}
           </span>
-          <a
-            className="font-medium underline underline-offset-3 hover:text-foreground"
-            href="https://openrouter.ai/docs/api/api-reference/models/list-all-models-and-their-properties"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            接口文档
-          </a>
+          {provider.docsUrl ? (
+            <a
+              className="font-medium underline underline-offset-3 hover:text-foreground"
+              href={provider.docsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              接口文档
+            </a>
+          ) : null}
         </div>
 
-        <ScrollArea className="h-[380px] rounded-lg border">
+        <ScrollArea className="h-95 rounded-lg border">
           <Table className="table-fixed">
             <TableHeader className="sticky top-0 z-10 bg-muted">
               <TableRow className="hover:bg-transparent">
@@ -173,7 +187,7 @@ export function OpenRouterImportDialog({
                 </TableHead>
                 <TableHead>模型</TableHead>
                 <TableHead className="w-[30%] text-right">
-                  OpenRouter USD / 1M
+                  {provider.label} USD / 1M
                 </TableHead>
               </TableRow>
             </TableHeader>

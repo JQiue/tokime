@@ -1,7 +1,7 @@
 import * as React from "react"
 
 import { fetchUsdCnyRate } from "@/lib/exchange-rate"
-import { DEFAULT_USD_CNY_RATE } from "@/lib/openrouter"
+import { DEFAULT_USD_CNY_RATE } from "@/lib/model-source"
 import { loadExchangeRate, saveExchangeRate } from "@/lib/storage"
 import type { ExchangeRateInfo, ExchangeRateStatus } from "@/lib/types"
 

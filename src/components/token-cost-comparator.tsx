@@ -2,15 +2,17 @@ import * as React from "react"
 
 import { CostResultSection } from "@/components/cost-result-section"
 import { ModelEditorTable } from "@/components/model-editor-table"
-import { OpenRouterImportDialog } from "@/components/openrouter-import-dialog"
+import { ModelImportDialog } from "@/components/model-import-dialog"
 import { ScenarioFields } from "@/components/scenario-fields"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useExchangeRate } from "@/hooks/use-exchange-rate"
+import { useModelImports } from "@/hooks/use-model-imports"
 import { useModelStore } from "@/hooks/use-model-store"
-import { useOpenRouterModels } from "@/hooks/use-openrouter-models"
 import { useScenario } from "@/hooks/use-scenario"
 import { rankModelCosts } from "@/lib/pricing"
+import { MODEL_PROVIDERS } from "@/lib/providers"
 import {
   collectMessages,
   hasNoErrors,
@@ -29,9 +31,10 @@ export function TokenCostComparator() {
     importModels,
   } = useModelStore()
   const { scenario, setField, usageRange } = useScenario()
-  const openRouter = useOpenRouterModels()
+  const exchangeRate = useExchangeRate()
+  const imports = useModelImports(MODEL_PROVIDERS, exchangeRate)
 
-  const [dialogOpen, setDialogOpen] = React.useState(false)
+  const [importOpen, setImportOpen] = React.useState(false)
   const [focusId, setFocusId] = React.useState<string | null>(null)
 
   const scenarioErrors = React.useMemo(
@@ -58,8 +61,9 @@ export function TokenCostComparator() {
   }
 
   function handleOpenImport() {
-    openRouter.prepare()
-    setDialogOpen(true)
+    // 打开前重置各选项卡的搜索/勾选，并懒加载当前提供商。
+    imports.open()
+    setImportOpen(true)
   }
 
   function handleClear() {
@@ -111,7 +115,7 @@ export function TokenCostComparator() {
                   variant="outline"
                   onClick={handleOpenImport}
                 >
-                  从 OpenRouter 导入
+                  导入模型
                 </Button>
                 <Button
                   type="button"
@@ -146,7 +150,7 @@ export function TokenCostComparator() {
               </div>
             ) : (
               <p className="py-8 text-center text-sm text-muted-foreground">
-                还没有模型，点击「添加模型」或从 OpenRouter 导入。
+                还没有模型，点击「添加模型」或「导入模型」。
               </p>
             )}
           </CardContent>
@@ -159,10 +163,10 @@ export function TokenCostComparator() {
         />
       </div>
 
-      <OpenRouterImportDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        source={openRouter}
+      <ModelImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        source={imports}
         onImport={importModels}
       />
     </main>

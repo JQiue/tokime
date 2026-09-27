@@ -3,9 +3,12 @@ import * as React from "react"
 import { createModelId, loadModels, saveModels } from "@/lib/storage"
 import type { Model } from "@/lib/types"
 
-/** 去重键：导入模型用 sourceId 标识，手动模型用自身 id。 */
+/**
+ * 去重键：导入模型用「来源 + sourceId」标识，手动模型用自身 id。
+ * 带上来源是为了让不同平台返回的同名 ID（如 openai/gpt-4.1）互不冲突。
+ */
 function dedupeKey(model: Model): string {
-  return model.sourceId || model.id
+  return model.sourceId ? `${model.source}:${model.sourceId}` : model.id
 }
 
 export interface UseModelStoreResult {

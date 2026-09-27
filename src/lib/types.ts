@@ -110,8 +110,8 @@ export interface ModelErrors {
   byId: Record<string, ModelError>
 }
 
-/** OpenRouter 返回的模型条目（仅取用到的字段）。 */
-export interface OpenRouterModel {
+/** 兼容 OpenRouter 规范的远端模型条目（仅取用到的字段）。 */
+export interface RemoteModel {
   id: string
   name: string
   pricing: {
@@ -121,8 +121,8 @@ export interface OpenRouterModel {
   }
 }
 
-/** OpenRouter 模型列表的加载状态。 */
-export type OpenRouterStatus = "idle" | "loading" | "ready" | "error"
+/** 远端模型列表的加载状态。 */
+export type RemoteModelStatus = "idle" | "loading" | "ready" | "error"
 
 /** 一次成功的汇率抓取结果（rate 以字符串保存，便于直接受控输入框）。 */
 export interface ExchangeRateInfo {
