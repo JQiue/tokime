@@ -39,16 +39,30 @@ src/main.tsx (StrictMode)
       ├─ ScenarioFields        ← 场景输入（滑块）
       ├─ ModelEditorTable      ← 模型编辑表
       ├─ CostResultSection     ← 结果区（排名表 + 5 种图表 Tab）
-      └─ ModelImportDialog ×2  ← 每个 provider 一个
+      └─ ModelImportDialog     ← 单个对话框，内部 Tabs 切换 provider（OpenRouter / OFox）
 ```
 
 **分层职责：**
 
 - `src/components/` —— 展示与交互。`token-cost-comparator.tsx` 是唯一的「容器」，其余为展示型组件。
-- `src/hooks/` —— 状态与副作用：`use-model-store`（模型 CRUD + 持久化）、`use-scenario`（场景字段）、`use-exchange-rate`（汇率）、`use-remote-models`（单 provider 远端列表）。
+- `src/hooks/` —— 状态与副作用：`use-model-store`（模型 CRUD + 持久化）、`use-scenario`（场景字段）、`use-exchange-rate`（汇率）、`use-model-imports`（多 provider 远端列表，勾选跨平台共享）。
 - `src/lib/` —— 纯逻辑，无 React：`pricing`（**计算核心**）、`validation`、`storage`、`model-source`、`providers`、`exchange-rate`、`format`、`chart-data`、`types`。
 
 数据流：`useModelStore` + `useScenario` →（校验）→ `rankModelCosts(models, usageRange)` → `ModelCostRange[]` → 排名表 / `chart-data` 构建器 → Recharts。
+
+## 部署
+
+纯静态产物（`npm run build` → `dist/`），但 **OFox 导入依赖同源反代**。用 nginx 时必须加：
+
+```nginx
+location /ofox-proxy/ {
+  proxy_pass https://api.ofox.io/;
+  proxy_set_header Host api.ofox.io;
+  proxy_ssl_server_name on;
+}
+```
+
+路径前缀 `/ofox-proxy` 必须与 `providers.ts` 的 `proxyPrefix` 一致；漏配则该提供商的模型列表加载失败。其余纯前端功能无需服务端。
 
 ## 关键约定（难以从代码表面推断，务必遵守）
 
@@ -85,9 +99,9 @@ src/main.tsx (StrictMode)
 
 ### 8. provider 抽象与 OFox 的 CORS 限制
 
-新增模型来源时，在 `src/lib/providers.ts` 注册 `ModelProvider`，复用 `model-source.ts` 的拉取/换算，无需新建文件。导入模型的 `id` 为 `${provider.id}:${modelId}`，去重键为 `${source}:${sourceId}`（不同平台同 ID 不冲突）。
+新增模型来源时，在 `src/lib/providers.ts` 的 `MODEL_PROVIDERS` 里注册 `ModelProvider`，复用 `model-source.ts` 的拉取/换算，UI（按钮、Tabs）自动生效，无需改动组件。导入模型的 `id` 为 `${provider.id}:${modelId}`，去重键为 `${source}:${sourceId}`（不同平台同 ID 不冲突）。
 
-**OFox（`api.ofox.io`）不返回 CORS 头，浏览器无法直连**。开发环境通过 `vite.config.ts` 的 `/ofox-proxy` 同源代理访问（前缀须与 `providers.ts` 的 `devProxyPrefix` 一致，仅在 `import.meta.env.DEV` 生效）。**生产构建下 OFox 导入会失败**——如需保留，必须自建代理。另：OFox 会忽略 `output_modalities=text` 查询参数，故 `model-source.ts` 有客户端兜底过滤（`isTextOutputModel`，结构缺失时保守保留）。
+**OFox（`api.ofox.io`）不返回 CORS 头，浏览器无法直连**，因此走同源代理：`providers.ts` 里 `proxyPrefix: "/ofox-proxy"`，`providerModelsUrl()` 统一把请求改写成 `/ofox-proxy/v1/models`。**开发环境**由 `vite.config.ts` 的 `server.proxy` 转发；**生产环境必须在部署侧配置同样的反代**（见下方「部署」），否则 OFox 导入失败。前缀两处必须一致。另：OFox 会忽略 `output_modalities=text` 查询参数，故 `model-source.ts` 有客户端兜底过滤（`isTextOutputModel`，结构缺失时保守保留）。
 
 ### 9. 汇率接口用 `api.frankfurter.dev`，不是 `.app`
 
