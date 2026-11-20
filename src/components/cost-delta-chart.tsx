@@ -117,7 +117,8 @@ export function CostDeltaChart({ results }: CostDeltaChartProps) {
         {baseline
           ? `「${baseline.name}${baseline.source ? `（${baseline.source}）` : ""}」`
           : "最坏情况最低的模型"}
-        为基准，柱长是其最坏情况下必须多花的金额（不含基准本身）。
+        为基准，柱长是其最坏情况下必须多花的金额；基准行差额为
+        0，因此不显示柱子。
       </p>
     </div>
   )

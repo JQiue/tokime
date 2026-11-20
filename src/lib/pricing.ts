@@ -145,7 +145,7 @@ export function rankModelCosts(
   usageRange: UsageRange
 ): ModelCostRange[] {
   return models
-    .filter((model) => model.enabled)
+    .filter((model) => model.enabled && !model.draft)
     .map((model) => {
       const atMinRate = calculateCost(model, usageRange.atMinRate)
       const atMaxRate = calculateCost(model, usageRange.atMaxRate)

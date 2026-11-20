@@ -7,6 +7,23 @@ export function formatNumber(value: number): string {
   return numberFormatter.format(value)
 }
 
+/** 大数字用「万 / 亿」表达，便于快速确认总 Token 的量级。 */
+export function formatTokenAmount(value: number): string {
+  if (!Number.isFinite(value)) return "—"
+  const abs = Math.abs(value)
+  if (abs >= 100_000_000) {
+    return `${(value / 100_000_000).toLocaleString("zh-CN", {
+      maximumFractionDigits: 2,
+    })} 亿`
+  }
+  if (abs >= 10_000) {
+    return `${(value / 10_000).toLocaleString("zh-CN", {
+      maximumFractionDigits: 2,
+    })} 万`
+  }
+  return formatNumber(value)
+}
+
 /**
  * 人民币金额。常规金额固定保留 2 位小数——百分比步长精确到 0.1% 后
  * 成本会算出任意位数的小数，若按原值渲染会让同一列出现 2/3/4 位混排；

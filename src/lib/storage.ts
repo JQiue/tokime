@@ -92,6 +92,7 @@ export function normalizeModel(model: UnknownRecord): Model {
     enabled: model.enabled !== false,
     source,
     sourceId,
+    draft: model.draft === true,
   }
 }
 
@@ -153,18 +154,7 @@ export function saveModels(models: Model[]): void {
  * 读取场景字段。只取当前保留的四个字段，逐项回落到默认值。
  * 兼容旧的单值命中率：上下限取其同值，语义与旧版完全一致（区间宽度为 0）。
  */
-export function loadScenario(): ScenarioState {
-  let raw = readJson(SCENARIO_STORAGE_KEY)
-  if (!isRecord(raw)) {
-    for (const key of LEGACY_SCENARIO_STORAGE_KEYS) {
-      const legacy = readJson(key)
-      if (isRecord(legacy)) {
-        raw = legacy
-        break
-      }
-    }
-  }
-
+export function normalizeScenario(raw: unknown): ScenarioState {
   const scenario: ScenarioState = { ...DEFAULT_SCENARIO }
   if (!isRecord(raw)) return scenario
 
@@ -188,6 +178,21 @@ export function loadScenario(): ScenarioState {
   }
 
   return scenario
+}
+
+export function loadScenario(): ScenarioState {
+  let raw = readJson(SCENARIO_STORAGE_KEY)
+  if (!isRecord(raw)) {
+    for (const key of LEGACY_SCENARIO_STORAGE_KEYS) {
+      const legacy = readJson(key)
+      if (isRecord(legacy)) {
+        raw = legacy
+        break
+      }
+    }
+  }
+
+  return normalizeScenario(raw)
 }
 
 export function saveScenario(scenario: ScenarioState): void {
@@ -221,5 +226,46 @@ export function saveExchangeRate(info: ExchangeRateInfo): void {
     localStorage.setItem(EXCHANGE_RATE_STORAGE_KEY, JSON.stringify(info))
   } catch {
     // 同上。
+  }
+}
+
+export interface BackupData {
+  models: Model[]
+  scenario: ScenarioState
+}
+
+const BACKUP_VERSION = 1
+
+/** 导出模型与场景的 JSON 备份，便于换设备或清理浏览器前保存。 */
+export function createBackup(models: Model[], scenario: ScenarioState): string {
+  return JSON.stringify(
+    {
+      app: "tokime",
+      version: BACKUP_VERSION,
+      exportedAt: new Date().toISOString(),
+      models,
+      scenario,
+    },
+    null,
+    2
+  )
+}
+
+/**
+ * 解析备份文件。只接受带 models 数组的 JSON；
+ * 缺字段或非法条目按导入时的规则逐项补齐，无法解析时返回 null。
+ */
+export function parseBackup(text: string): BackupData | null {
+  let data: unknown
+  try {
+    data = JSON.parse(text)
+  } catch {
+    return null
+  }
+  if (!isRecord(data) || !Array.isArray(data.models)) return null
+
+  return {
+    models: data.models.filter(isRecord).map((model) => normalizeModel(model)),
+    scenario: normalizeScenario(data.scenario),
   }
 }

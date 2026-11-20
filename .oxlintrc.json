@@ -113,6 +113,13 @@
       }
     },
     {
+      "files": ["src/components/token-cost-comparator.tsx"],
+      "rules": {
+        "react/refs": "off"
+      },
+      "plugins": ["react"]
+    },
+    {
       "files": ["src/components/ui/**/*.{ts,tsx}"],
       "rules": {
         "react/only-export-components": "off"

@@ -18,8 +18,9 @@ import {
 import { buildScanData, chartColor, seriesKey } from "@/lib/chart-data"
 import { formatMoney, formatMoneyCompact } from "@/lib/format"
 import type { ModelCostRange, UsageRange } from "@/lib/types"
+import { cn } from "@/lib/utils"
 
-const MAX_SERIES = 8
+const DEFAULT_SERIES = 8
 
 const CHART_HEIGHT = 360
 
@@ -29,27 +30,63 @@ export interface CostScanChartProps {
 }
 
 export function CostScanChart({ results, usageRange }: CostScanChartProps) {
-  const series = React.useMemo(() => results.slice(0, MAX_SERIES), [results])
-  const hiddenCount = results.length - series.length
-  const data = React.useMemo(
-    () => buildScanData(series, usageRange),
-    [series, usageRange]
+  const [selectedIds, setSelectedIds] = React.useState<ReadonlySet<string>>(
+    () => new Set(results.slice(0, DEFAULT_SERIES).map((item) => item.id))
+  )
+
+  // 模型增删后，选中集合里可能残留已失效的 id；渲染时过滤即可。
+  // 一个有效项都不剩时回退到前 8 个。这样无需在 effect 里 setState。
+  const effectiveSelected = React.useMemo(() => {
+    const valid = new Set(results.map((item) => item.id))
+    const next = new Set([...selectedIds].filter((id) => valid.has(id)))
+    if (next.size === 0) {
+      results.slice(0, DEFAULT_SERIES).forEach((item) => next.add(item.id))
+    }
+    return next
+  }, [results, selectedIds])
+
+  const series = React.useMemo(
+    () => results.filter((item) => effectiveSelected.has(item.id)),
+    [results, effectiveSelected]
   )
 
   const { minRate, maxRate } = usageRange
 
   const hasBand = !(minRate === 0 && maxRate === 100)
 
+  const colorIndex = React.useMemo(() => {
+    const map = new Map<string, number>()
+    results.forEach((item, index) => map.set(item.id, index))
+    return map
+  }, [results])
+
+  const data = React.useMemo(
+    () => buildScanData(series, usageRange),
+    [series, usageRange]
+  )
+
   const chartConfig = React.useMemo(() => {
     const config: ChartConfig = {}
     series.forEach((item, index) => {
       config[seriesKey(index)] = {
         label: item.source ? `${item.name}（${item.source}）` : item.name,
-        color: chartColor(index),
+        color: chartColor(colorIndex.get(item.id) ?? index),
       }
     })
     return config
-  }, [series])
+  }, [series, colorIndex])
+
+  function toggleSeries(id: string) {
+    const next = new Set(effectiveSelected)
+    if (next.has(id)) {
+      // 至少保留一条曲线。
+      if (next.size === 1) return
+      next.delete(id)
+    } else {
+      next.add(id)
+    }
+    setSelectedIds(next)
+  }
 
   return (
     <div className="flex flex-col gap-3">
@@ -122,46 +159,65 @@ export function CostScanChart({ results, usageRange }: CostScanChartProps) {
               key={item.id}
               type="linear"
               dataKey={seriesKey(index)}
-              stroke={chartColor(index)}
+              stroke={chartColor(colorIndex.get(item.id) ?? index)}
               strokeWidth={2}
               dot={false}
               activeDot={{ r: 3 }}
+              isAnimationActive={false}
             />
           ))}
         </LineChart>
       </ChartContainer>
 
-      {/* 自绘图例：recharts 的图例放不下 8 个长模型名，这里自己排版并顺带标出来源。 */}
-      <ul className="flex flex-wrap gap-x-4 gap-y-2">
-        {series.map((item, index) => (
-          <li key={item.id} className="flex items-center gap-1.5 text-xs">
-            <span
-              className="size-2.5 shrink-0 rounded-[2px]"
-              style={{ background: chartColor(index) }}
-            />
-            <span
-              className="text-foreground"
-              title={item.source ? `${item.name}（${item.source}）` : item.name}
+      {/*
+       * 自绘图例：recharts 的图例放不下长模型名，这里自己排版并顺带标出来源。
+       * 每个标签可点击切换，模型很多时也能看任意一条曲线。
+       */}
+      <div className="flex max-h-28 flex-wrap gap-1.5 overflow-y-auto rounded-lg border p-2">
+        {results.map((item) => {
+          const index = colorIndex.get(item.id) ?? 0
+          const active = effectiveSelected.has(item.id)
+          const label = item.source
+            ? `${item.name}（${item.source}）`
+            : item.name
+          return (
+            <button
+              key={item.id}
+              type="button"
+              aria-pressed={active}
+              title={active ? `隐藏 ${label}` : `显示 ${label}`}
+              onClick={() => toggleSeries(item.id)}
+              className={cn(
+                "inline-flex max-w-full items-center gap-1.5 rounded-md border px-2 py-1 text-xs transition-colors",
+                active
+                  ? "bg-background text-foreground hover:bg-muted"
+                  : "text-muted-foreground opacity-60 hover:opacity-100"
+              )}
             >
-              {truncateByWidth(item.name, 24)}
-            </span>
-            {item.source ? (
-              <span className="text-muted-foreground">
-                {truncateByWidth(item.source, 12)}
-              </span>
-            ) : null}
-          </li>
-        ))}
-      </ul>
+              <span
+                className="size-2.5 shrink-0 rounded-[2px]"
+                style={{ background: chartColor(index) }}
+              />
+              <span className="truncate">{truncateByWidth(item.name, 24)}</span>
+              {item.source ? (
+                <span className="shrink-0 text-muted-foreground">
+                  {truncateByWidth(item.source, 12)}
+                </span>
+              ) : null}
+            </button>
+          )
+        })}
+      </div>
 
       <p className="text-xs text-muted-foreground">
         {hasBand
           ? `横轴为缓存命中率，阴影带即当前设置的区间（${minRate}% ～ ${maxRate}%）；`
           : "横轴为缓存命中率；当前区间已是 0% ～ 100% 的完整范围，阴影带会盖满整张图，所以未绘制，拖动上方滑块缩小区间即可看到；"}
-        两条线交叉的位置表示在该命中率下 两者成本持平。
-        {hiddenCount > 0
-          ? ` 另有 ${hiddenCount} 个模型未显示，此处只画最坏情况最低的 ${MAX_SERIES} 个。`
-          : null}
+        任意两条曲线交叉的位置表示在该命中率下两个模型成本持平。当前显示{" "}
+        {series.length} 条曲线
+        {results.length > series.length
+          ? `，另有 ${results.length - series.length} 个模型未选中，点击图例即可切换。`
+          : "，点击图例可以隐藏或显示曲线。"}
       </p>
     </div>
   )

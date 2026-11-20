@@ -36,13 +36,15 @@ export interface AxisLabelItem {
   source: string
 }
 
-/** 区间对比柱图：每个模型两根柱子，分别对应命中率区间的两端。 */
+/** 区间对比柱图：用浮动条表示「最低 ～ 最高」的成本区间。 */
 export interface IntervalDatum {
   id: string
   name: string
   source: string
   bestCost: number
   worstCost: number
+  /** 区间跨度，浮动条的实际长度。 */
+  span: number
 }
 
 export function buildIntervalData(
@@ -54,6 +56,7 @@ export function buildIntervalData(
     source: result.source,
     bestCost: result.bestCost,
     worstCost: result.worstCost,
+    span: Math.max(0, result.worstCost - result.bestCost),
   }))
 }
 

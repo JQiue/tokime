@@ -44,6 +44,14 @@ export interface UseModelImportsResult {
   setQuery: (query: string) => void
   /** 勾选 / 取消当前选项卡中的某个模型。 */
   toggleSelected: (modelId: string) => void
+  /** 批量设置当前选项卡的勾选状态（用于全选筛选结果）。 */
+  selectMany: (modelIds: readonly string[], selected: boolean) => void
+  /** 清空全部提供商的勾选。 */
+  clearSelection: () => void
+  /** 每个提供商各自的已选数量，用于选项卡角标。 */
+  selectionCounts: Record<string, number>
+  /** 重新加载当前提供商的模型列表。 */
+  reload: () => void
   /** 跨全部提供商已勾选的总数。 */
   selectedCount: number
   usdCnyRate: string
@@ -113,7 +121,11 @@ export function useModelImports(
         if (controller.signal.aborted) return
         setEntries((prev) => ({
           ...prev,
-          [provider.id]: { ...prev[provider.id], models: list, status: "ready" },
+          [provider.id]: {
+            ...prev[provider.id],
+            models: list,
+            status: "ready",
+          },
         }))
       })
       .catch(() => {
@@ -188,6 +200,38 @@ export function useModelImports(
     })
   }, [])
 
+  const selectMany = React.useCallback(
+    (modelIds: readonly string[], selected: boolean) => {
+      const id = activeIdRef.current
+      setEntries((prev) => {
+        const entry = prev[id]
+        const selectedIds = new Set(entry.selectedIds)
+        for (const modelId of modelIds) {
+          if (selected) selectedIds.add(modelId)
+          else selectedIds.delete(modelId)
+        }
+        return { ...prev, [id]: { ...entry, selectedIds } }
+      })
+    },
+    []
+  )
+
+  const clearSelection = React.useCallback(() => {
+    setEntries((prev) => {
+      const next: Record<string, ProviderEntry> = {}
+      for (const [id, entry] of Object.entries(prev)) {
+        next[id] = { ...entry, selectedIds: new Set() }
+      }
+      return next
+    })
+  }, [])
+
+  const reload = React.useCallback(() => {
+    const provider =
+      providers.find((item) => item.id === activeIdRef.current) ?? providers[0]
+    load(provider)
+  }, [providers, load])
+
   const activeProvider =
     providers.find((item) => item.id === activeId) ?? providers[0]
   const activeEntry = entries[activeProvider.id] ?? {
@@ -212,6 +256,14 @@ export function useModelImports(
     }
     return total
   }, [entries])
+
+  const selectionCounts = React.useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const provider of providers) {
+      counts[provider.id] = entries[provider.id]?.selectedIds.size ?? 0
+    }
+    return counts
+  }, [entries, providers])
 
   const rate = exchangeRate.rate
 
@@ -246,6 +298,10 @@ export function useModelImports(
     open,
     setQuery,
     toggleSelected,
+    selectMany,
+    clearSelection,
+    selectionCounts,
+    reload,
     selectedCount,
     usdCnyRate: exchangeRate.rate,
     setUsdCnyRate: exchangeRate.setRate,

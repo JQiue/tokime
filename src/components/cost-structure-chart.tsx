@@ -10,6 +10,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   buildStructureData,
   chartColor,
@@ -17,7 +18,6 @@ import {
 } from "@/lib/chart-data"
 import { formatMoney, formatMoneyCompact } from "@/lib/format"
 import type { ModelCostRange } from "@/lib/types"
-import { cn } from "@/lib/utils"
 
 const chartConfig = {
   normalInputCost: { label: "输入", color: chartColor(0) },
@@ -58,29 +58,23 @@ export function CostStructureChart({ results }: CostStructureChartProps) {
 
   return (
     <div className="flex flex-col gap-3">
-      <div
-        role="group"
-        aria-label="堆叠口径"
-        className="inline-flex w-fit items-center gap-1 rounded-lg bg-muted p-[3px]"
+      <Tabs
+        value={end}
+        onValueChange={(value) => setEnd(value as StructureEnd)}
+        className="w-fit gap-0"
       >
-        {END_OPTIONS.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            aria-pressed={end === option.value}
-            title={option.hint}
-            onClick={() => setEnd(option.value)}
-            className={cn(
-              "rounded-md px-2.5 py-0.5 text-sm font-medium transition-colors",
-              end === option.value
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
+        <TabsList>
+          {END_OPTIONS.map((option) => (
+            <TabsTrigger
+              key={option.value}
+              value={option.value}
+              title={option.hint}
+            >
+              {option.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
 
       <ChartContainer
         config={chartConfig}
@@ -142,12 +136,14 @@ export function CostStructureChart({ results }: CostStructureChartProps) {
             stackId="cost"
             fill="var(--color-normalInputCost)"
             barSize={18}
+            isAnimationActive={false}
           />
           <Bar
             dataKey="cachedInputCost"
             stackId="cost"
             fill="var(--color-cachedInputCost)"
             barSize={18}
+            isAnimationActive={false}
           />
           <Bar
             dataKey="outputCost"
@@ -156,6 +152,7 @@ export function CostStructureChart({ results }: CostStructureChartProps) {
             // 堆叠条只有最外侧一段需要圆角，否则内部会出现刀口。
             radius={[0, 2, 2, 0]}
             barSize={18}
+            isAnimationActive={false}
           />
         </BarChart>
       </ChartContainer>

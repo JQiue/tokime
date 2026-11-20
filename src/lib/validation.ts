@@ -19,6 +19,19 @@ function isPercentInRange(value: string): boolean {
   return parsed >= 0 && parsed <= 100
 }
 
+/** 草稿模型不参与校验、排名与图表。 */
+export function isModelDraft(model: Model): boolean {
+  return model.draft === true
+}
+
+/** 名称与三项价格都填写合法后，草稿才会转为正式模型。 */
+export function isModelComplete(model: Model): boolean {
+  if (!model.name.trim()) return false
+  return [model.normalPrice, model.cachedPrice, model.outputPrice].every(
+    (price) => !isBlankOrInvalid(price) && Number(price) >= 0
+  )
+}
+
 /** 校验场景字段，返回按字段索引的错误消息。 */
 export function validateScenario(scenario: ScenarioState): ScenarioErrors {
   const errors: ScenarioErrors = {}
@@ -61,13 +74,15 @@ export function validateModels(models: Model[]): ModelErrors {
   const general: string[] = []
   const byId: Record<string, ModelError> = {}
 
-  const enabledModels = models.filter((model) => model.enabled)
+  // 草稿模型（刚添加、价格还没填）不参与校验，避免整页结果和图表被清空。
+  const activeModels = models.filter((model) => !isModelDraft(model))
+  if (activeModels.length === 0) {
+    return { general, byId }
+  }
+
+  const enabledModels = activeModels.filter((model) => model.enabled)
   if (enabledModels.length === 0) {
-    // 一个模型都没有时不算错误：首次打开就是这个状态，
-    // 模型列表区域已经有引导文案，弹红框反而像出错了。
-    if (models.length > 0) {
-      general.push("请至少启用一个模型参与比较。")
-    }
+    general.push("请至少启用一个模型参与比较。")
     return { general, byId }
   }
 

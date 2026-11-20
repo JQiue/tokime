@@ -11,41 +11,53 @@ export interface NumericInputProps {
   suffix?: string
   /** 校验失败时置为 true，渲染 aria-invalid 样式。 */
   invalid?: boolean
+  /** 失焦时给整数部分加千分位，聚焦编辑时显示原始值。 */
+  grouped?: boolean
   ariaLabel?: string
   className?: string
-  min?: number
-  max?: number
-  step?: number
+}
+
+/** 只给合法数字的整数部分加千分位，保留小数原样。 */
+function groupDigits(value: string): string {
+  if (!/^-?\d+(\.\d+)?$/.test(value)) return value
+  const [integer, fraction] = value.split(".")
+  const negative = integer.startsWith("-")
+  const digits = negative ? integer.slice(1) : integer
+  const grouped = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+  return `${negative ? "-" : ""}${grouped}${fraction === undefined ? "" : `.${fraction}`}`
 }
 
 /**
  * 数字输入框。
  * 值以字符串受控——这样用户可以正常清空输入框，
  * 而不会像直接绑定 number 那样在删除字符时被强制回填。
+ * 用 text + inputMode 替代 number，避免窄单元格里出现占位的 spinner，
+ * 也避免页面滚动时鼠标滚轮误改已聚焦的价格。
  */
 export function NumericInput({
   value,
   onValueChange,
   suffix,
   invalid = false,
+  grouped = false,
   ariaLabel,
   className,
-  min = 0,
-  max,
-  step,
 }: NumericInputProps) {
+  const [focused, setFocused] = React.useState(false)
+  const display = grouped && !focused ? groupDigits(value) : value
+
   const input = (
     <Input
-      type="number"
-      min={min}
-      max={max}
-      step={step}
+      type="text"
       inputMode="decimal"
-      value={value}
+      autoComplete="off"
+      value={display}
       aria-label={ariaLabel}
       aria-invalid={invalid || undefined}
-      onChange={(event) => onValueChange(event.target.value)}
-      className={cn(suffix ? "pr-8" : undefined, className)}
+      onFocusCapture={() => setFocused(true)}
+      onBlurCapture={() => setFocused(false)}
+      onChange={(event) => onValueChange(event.target.value.replace(/,/g, ""))}
+      className={cn("tabular-nums", suffix ? "pr-8" : undefined, className)}
     />
   )
 
@@ -58,27 +70,5 @@ export function NumericInput({
         {suffix}
       </span>
     </div>
-  )
-}
-
-/**
- * 场景字段用的行内表单项：标签 + 控件 + 错误文案。
- * 使用隐式 label 关联（输入框为 label 后代），免去 id 传递。
- */
-export function Field({
-  label,
-  error,
-  children,
-}: {
-  label: string
-  error?: string
-  children: React.ReactNode
-}) {
-  return (
-    <label className="flex flex-col gap-1.5">
-      <span className="text-sm font-medium">{label}</span>
-      {children}
-      {error ? <span className="text-xs text-destructive">{error}</span> : null}
-    </label>
   )
 }

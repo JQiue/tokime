@@ -19,6 +19,8 @@ export interface Model {
   source: string
   /** 来自 OpenRouter 时为该平台的模型 ID，手动创建时为空串 */
   sourceId: string
+  /** 草稿模型：尚未填完名称与价格，不参与校验、排名和图表。 */
+  draft?: boolean
 }
 
 /** 模型的数值化视图，供成本计算使用。 */
