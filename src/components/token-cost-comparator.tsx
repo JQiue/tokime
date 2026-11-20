@@ -196,7 +196,7 @@ export function TokenCostComparator() {
   }
 
   return (
-    <main className="mx-auto min-h-svh max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <main className="mx-auto min-h-svh max-w-[100rem] px-4 py-8 sm:px-6 lg:px-8">
       <header className="mb-6 border-b pb-5">
         <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
           Token 成本比价
@@ -224,7 +224,7 @@ export function TokenCostComparator() {
         </Alert>
       ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] xl:items-start">
+      <div className="grid gap-6 xl:grid-cols-[minmax(380px,440px)_minmax(0,1fr)] xl:items-start">
         <Card className="min-w-0">
           <CardHeader className="border-b">
             <div className="flex flex-wrap items-center justify-between gap-3">

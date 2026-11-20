@@ -99,9 +99,10 @@ export function ModelEditorTable({
   onRemove,
 }: ModelEditorTableProps) {
   return (
-    <>
-      {/* 窄屏：卡片式编辑，避免 6 列表格把价格输入压到不可读。 */}
-      <div className="divide-y md:hidden">
+    <div className="@container">
+      {/* 按容器宽度切换，而不是视口：xl 两栏时左列会比视口窄得多。 */}
+      {/* 窄容器：卡片式编辑，避免 6 列表格把价格输入压到不可读。 */}
+      <div className="divide-y @min-[760px]:hidden">
         {models.map((model) => {
           const error = errors.byId[model.id]
           return (
@@ -187,8 +188,8 @@ export function ModelEditorTable({
         })}
       </div>
 
-      {/* 桌面端：紧凑表格。 */}
-      <div className="hidden md:block">
+      {/* 宽容器：紧凑表格。 */}
+      <div className="hidden @min-[760px]:block">
         <Table className="table-fixed">
           <TableHeader>
             <TableRow className="hover:bg-transparent">
@@ -325,6 +326,6 @@ export function ModelEditorTable({
           </TableBody>
         </Table>
       </div>
-    </>
+    </div>
   )
 }

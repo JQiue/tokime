@@ -28,9 +28,9 @@ function TokenHead({
   alignRight?: boolean
 }) {
   return (
-    <TableHead className={alignRight ? "text-right" : undefined}>
+    <TableHead className={cn("whitespace-normal", alignRight && "text-right")}>
       <span className="block">{label}</span>
-      <span className="block text-xs font-normal text-muted-foreground">
+      <span className="block text-xs font-normal whitespace-normal text-muted-foreground">
         {from === to
           ? `${formatNumber(from)} Token`
           : `${formatNumber(from)} → ${formatNumber(to)} Token`}
@@ -77,9 +77,10 @@ export function CostRankingTable({
   const highestWorstCost = results.at(-1)?.worstCost ?? 0
 
   return (
-    <div>
-      {/* 窄屏：卡片式排名，保留成本明细并通过 details 收起 Token 明细。 */}
-      <div className="divide-y md:hidden">
+    <div className="@container">
+      {/* 按容器宽度切换，而不是视口：右栏在 1280–1440 桌面下仍可能很窄。 */}
+      {/* 窄容器：卡片式排名，保留成本明细并通过 details 收起 Token 明细。 */}
+      <div className="divide-y @min-[950px]:hidden">
         {results.map((result, index) => {
           const isBest = index === 0
           const saving = highestWorstCost - result.worstCost
@@ -188,8 +189,8 @@ export function CostRankingTable({
         })}
       </div>
 
-      {/* 桌面端：完整表格。 */}
-      <div className="hidden md:block">
+      {/* 宽容器：完整表格。 */}
+      <div className="hidden @min-[950px]:block">
         <Table className="table-fixed">
           <TableHeader>
             <TableRow className="hover:bg-transparent">
@@ -262,21 +263,21 @@ export function CostRankingTable({
                     </div>
                   </TableCell>
 
-                  <TableCell className="text-right text-muted-foreground tabular-nums">
+                  <TableCell className="text-right whitespace-normal text-muted-foreground tabular-nums">
                     {formatRange(
                       result.atMinRate.normalInputCost,
                       result.atMaxRate.normalInputCost,
                       formatMoney
                     )}
                   </TableCell>
-                  <TableCell className="text-right text-muted-foreground tabular-nums">
+                  <TableCell className="text-right whitespace-normal text-muted-foreground tabular-nums">
                     {formatRange(
                       result.atMinRate.cachedInputCost,
                       result.atMaxRate.cachedInputCost,
                       formatMoney
                     )}
                   </TableCell>
-                  <TableCell className="text-right text-muted-foreground tabular-nums">
+                  <TableCell className="text-right whitespace-normal text-muted-foreground tabular-nums">
                     {formatRange(
                       result.atMinRate.outputCost,
                       result.atMaxRate.outputCost,
@@ -284,7 +285,7 @@ export function CostRankingTable({
                     )}
                   </TableCell>
 
-                  <TableCell className="text-right font-bold tabular-nums">
+                  <TableCell className="text-right font-bold whitespace-normal tabular-nums">
                     {formatRange(
                       result.bestCost,
                       result.worstCost,
